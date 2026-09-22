@@ -197,6 +197,22 @@ It does, however, suppress implicit declaration of move construction and move as
 virtual ~Sensor() = default;
 ```
 
+Here, **user-declared** means that you wrote the destructor declaration yourself. Writing `= default` asks the compiler to supply its implementation; it does not make the declaration implicit. More precisely, a destructor defaulted on its first declaration is user-declared but not user-provided. The move-generation rules care about **user-declared**.
+
+The two rules ask different questions:
+
+| Operation | Effect of declaring only a destructor |
+|---|---|
+| Default constructor | Still implicitly declared: a destructor is not a constructor. |
+| Move constructor | Not implicitly declared: a user-declared destructor blocks automatic move generation. |
+| Move assignment | Not implicitly declared for the same reason. |
+
+The `virtual` keyword is not responsible for this suppression. A non-virtual `~Sensor() = default;` has the same effect on automatic move generation.
+
+A useful design intuition is that custom destruction can signal special resource or lifetime responsibilities. Automatically moving members might not preserve those responsibilities. The language applies a fixed rule rather than inspecting whether your destructor actually needs special handling—even a defaulted destructor triggers it.
+
+If moving is appropriate, you can explicitly declare the move operations with `= default`. They must still be valid for the class's bases and members. Remember that declaring a move constructor also means you must explicitly provide a default constructor if you want one.
+
 Do not generalize one special-member rule to all the others.
 
 Also, the absence of a move constructor does not necessarily make initialization from an rvalue invalid: a copy constructor taking `const T&` may accept it. Consequently, `std::is_move_constructible_v<T>` checks whether construction from `T&&` works; it does not prove that a dedicated move constructor exists.

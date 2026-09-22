@@ -221,7 +221,11 @@ In our corrected example, both copying and moving are explicitly prohibited, so 
 
 ## The Rule of Five is a design prompt
 
-The Rule of Five asks us to consider these related operations together:
+**Definition — Rule of Five:** If you define or explicitly delete any one of a class's destructor, copy constructor, copy assignment operator, move constructor, or move assignment operator, you should explicitly define or delete all five.
+
+This is a design guideline, not a compiler requirement. It asks you to make a consistent decision about how the class manages destruction, copying, and moving. For each operation, you can provide an implementation, request the compiler-generated implementation with `= default`, or prohibit it with `= delete`. You do not need to write five custom function bodies, and you do not need to support both copying and moving.
+
+The five operations are:
 
 - Destructor
 - Copy constructor

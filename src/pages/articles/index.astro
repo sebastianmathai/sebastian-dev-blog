@@ -1,0 +1,18 @@
+---
+import Base from '../../layouts/Base.astro';
+const posts = Object.values(import.meta.glob('./*.md', { eager: true })).sort((a:any,b:any) => Date.parse(b.frontmatter.date)-Date.parse(a.frontmatter.date)) as any[];
+---
+<Base title="Articles — Sebastian Dev Blog">
+  <section class="wrap section archive"><p class="eyebrow">THE NOTEBOOK</p><h1>Ideas, worked through.</h1><p class="lead">Small examples. Clear reasoning. A deeper understanding.</p>
+    <div class="filters"><label class="search-label">Search articles<input id="search" type="search" placeholder="Search the notebook…" /></label><label>Topic<select id="topic"><option value="all">All topics</option>{[...new Set(posts.map(p=>p.frontmatter.category))].map(c=><option value={c}>{c}</option>)}</select></label></div>
+    <div id="results">{posts.map(p=><article class="article-row" data-search={`${p.frontmatter.title} ${p.frontmatter.description}`.toLowerCase()} data-category={p.frontmatter.category}><div><span class="tag">{p.frontmatter.category}</span><h2><a href={p.url}>{p.frontmatter.title}</a></h2><p>{p.frontmatter.description}</p><p class="meta">{p.frontmatter.date} · {p.frontmatter.readingTime}</p></div><span aria-hidden="true">↗</span></article>)}</div>
+    <p id="empty" role="status" hidden>No articles match. Try another search or topic.</p>
+  </section>
+</Base>
+<script>
+const search = document.querySelector<HTMLInputElement>('#search')!;
+const topic = document.querySelector<HTMLSelectElement>('#topic')!;
+const rows = [...document.querySelectorAll<HTMLElement>('.article-row')];
+function filter() { let count=0; for (const row of rows) { row.hidden = !(row.dataset.search!.includes(search.value.trim().toLowerCase()) && (topic.value==='all' || topic.value===row.dataset.category)); if (!row.hidden) count++; } document.querySelector<HTMLElement>('#empty')!.hidden = count > 0; }
+search.addEventListener('input',filter); topic.addEventListener('change',filter);
+</script>

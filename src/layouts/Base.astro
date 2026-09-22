@@ -1,0 +1,35 @@
+---
+import '../styles/global.css';
+const { title = 'Sebastian Dev Blog', description = 'Clear mental models for C++, embedded software, and thoughtful software design.' } = Astro.props;
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+const path = Astro.url.pathname;
+---
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width" />
+    <meta name="description" content={description} />
+    <meta name="theme-color" content="#f6f5f0" />
+    <title>{title}</title>
+    <link rel="canonical" href={new URL(Astro.url.pathname, Astro.site)} />
+    <link rel="icon" type="image/svg+xml" href={`${base}/favicon.svg`} />
+    <meta property="og:title" content={title} />
+    <meta property="og:description" content={description} />
+    <meta property="og:type" content="website" />
+  </head>
+  <body>
+    <a class="skip" href="#main">Skip to content</a>
+    <header class="site-header wrap">
+      <a class="brand" href={`${base}/`} aria-label="Sebastian Dev Blog home"><span class="mark">s<span>.</span></span><span>Sebastian<span class="brand-sub">DEV BLOG</span></span></a>
+      <nav aria-label="Main navigation">
+        <a href={`${base}/`} aria-current={path === `${base}/` ? 'page' : undefined}>Home</a>
+        <a href={`${base}/articles/`} aria-current={path.includes('/articles/') ? 'page' : undefined}>Articles</a>
+        <a href={`${base}/about/`} aria-current={path.includes('/about/') ? 'page' : undefined}>About</a>
+        <a class="github-link" href="https://github.com/sebastianmathai">GitHub ↗</a>
+      </nav>
+    </header>
+    <main id="main"><slot /></main>
+    <footer class="wrap site-footer"><span>© {new Date().getFullYear()} Sebastian Mathai</span><span>Built with curiosity. Written to understand.</span><a href="https://github.com/sebastianmathai/sebastian-dev-blog">Source ↗</a></footer>
+  </body>
+</html>

@@ -67,3 +67,10 @@ vcpkg_installed/
 # test output & cache
 Testing/
 .cache/
+
+# Astro
+node_modules/
+dist/
+.astro/
+.env
+.env.*

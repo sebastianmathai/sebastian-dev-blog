@@ -1,0 +1,42 @@
+---
+import Base from '../layouts/Base.astro';
+const base = import.meta.env.BASE_URL.replace(/\/$/, '');
+---
+<Base>
+  <section class="hero wrap">
+    <div>
+      <p class="eyebrow"><span class="dot"></span> C++ · EMBEDDED SYSTEMS · SOFTWARE DESIGN</p>
+      <h1>Beyond the syntax.<br /><em>Into the why.</em></h1>
+      <p class="lead">Notes on building a deeper understanding of C++. One mental model, one small example, one better question at a time.</p>
+      <div class="actions"><a class="button" href={`${base}/articles/`}>Explore the articles <span>↗</span></a><a class="text-link" href={`${base}/about/`}>Meet the engineer →</a></div>
+      <p class="hero-note">By Sebastian Mathai <span> / </span> C++ & embedded software</p>
+    </div>
+    <div class="code-panel" aria-label="Illustrative C++ code">
+      <div class="code-top"><span>● ● ●</span><span>mental_model.cpp</span><span>C++</span></div>
+      <pre><code><span class="comment">// Good questions build better software.</span>
+
+<span class="purple">struct</span> <span class="green">Understanding</span> {
+    <span class="purple">bool</span> know_the_syntax;
+    <span class="purple">bool</span> know_the_reason;
+};
+
+<span class="purple">constexpr</span> Understanding goal {
+    <span class="orange">true</span>,
+    <span class="orange">true</span>   <span class="comment">// this is where we go deeper</span>
+};</code></pre>
+      <div class="code-bottom"><span class="dot"></span> Reason first. Code with intent.</div>
+    </div>
+  </section>
+  <section class="wrap section">
+    <div class="section-heading"><div><p class="eyebrow">THE NOTEBOOK</p><h2>A place for the useful questions.</h2></div><a class="text-link" href={`${base}/articles/`}>All articles →</a></div>
+    <a class="feature" href={`${base}/articles/welcome/`}>
+      <div class="feature-art" aria-hidden="true"><span>{'{ }'}</span><small>THINK / BUILD / UNDERSTAND</small></div>
+      <div class="feature-copy"><span class="tag">FROM THE EDITOR</span><h3>A notebook for understanding C++</h3><p>What this blog is about, how the articles will be written, and the questions worth exploring.</p><div class="meta">22 September 2026 <span>·</span> 2 min read <span class="arrow">↗</span></div></div>
+    </a>
+  </section>
+  <section class="wrap section topics"><p class="eyebrow">WHAT WE’LL EXPLORE</p><div class="topic-grid">
+    <div><span class="number">01 /</span><h3>C++ mental models</h3><p>Ownership, lifetime, constness, and the rules behind everyday code.</p></div>
+    <div><span class="number">02 /</span><h3>Embedded systems</h3><p>Bytes, devices, data pipelines, and the practical details that matter.</p></div>
+    <div><span class="number">03 /</span><h3>Software design</h3><p>Invariants, class boundaries, and making trade-offs explicit.</p></div>
+  </div></section>
+</Base>

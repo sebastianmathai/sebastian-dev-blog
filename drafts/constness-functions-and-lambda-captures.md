@@ -3,7 +3,7 @@
 Status: draft  
 Series: C++ Mental Models — Part 3  
 Standard: C++17  
-Estimated reading time: 8 minutes
+Estimated reading time: 12 minutes
 
 A callback works when you call it directly. You capture it inside a wrapper lambda, call it in exactly the same way, and the compiler rejects it.
 
@@ -73,7 +73,116 @@ These declarations make different promises:
 | `Sensor* const sensor = /* ... */;` | The pointer cannot change; the Sensor can be modified through it. |
 | `const Sensor* const sensor = /* ... */;` | Both restrictions apply. |
 
-A by-value parameter such as `void process(const int count)` makes the function's local parameter const. It says nothing about the caller's original integer. That top-level const also does not create a distinct overload from `void process(int count)`.
+## Read simple pointer declarations from right to left
+
+For these simple declarations, start at the variable name and read the type toward the left. Read `*` as “pointer to.” Writing the base type as `Sensor const` makes this especially easy:
+
+| Declaration | Read it as |
+|---|---|
+| `Sensor* p;` | p is a pointer to Sensor. |
+| `Sensor const* p;` | p is a pointer to const Sensor. |
+| `Sensor* const p = &sensor;` | p is a const pointer to Sensor. |
+| `Sensor const* const p = &sensor;` | p is a const pointer to const Sensor. |
+
+`const Sensor* p` means exactly the same as `Sensor const* p`: a pointer to const Sensor. The placement of `const` on either side of the base type does not change its meaning.
+
+For one pointer level, this gives a quick check:
+
+- `const` **before the star** qualifies the pointed-to object.
+- `const` **after the star** qualifies the pointer itself.
+
+Here is how those restrictions differ in a function-body fragment:
+
+```cpp
+int first = 10;
+int second = 20;
+
+int const* pointerToConst = &first;
+pointerToConst = &second;       // OK: change the stored address.
+// *pointerToConst = 30;        // Error: modify through const access.
+
+int* const constPointer = &first;
+*constPointer = 30;             // OK: change first.
+// constPointer = &second;      // Error: change the stored address.
+
+int const* const both = &first;
+// both = &second;              // Error: pointer is const.
+// *both = 40;                  // Error: pointee access is const.
+```
+
+“Pointer to const” restricts modification through the pointer; it does not require the original object to have been declared const. Here, `first` remains a non-const integer.
+
+Use this reading shortcut for simple pointer declarations. Parentheses, arrays, and function pointers require following the declarator's structure rather than blindly reading every token backward.
+
+## Top-level const: is the object itself const?
+
+**Top-level const qualifies the declared object itself.** For a pointer variable, that object is the pointer that holds an address.
+
+Constness on the pointed-to type is commonly called **low-level const**.
+
+| Declaration | Top-level const? | What is const-qualified? |
+|---|---|---|
+| `const int count = 10;` | Yes | The integer itself. |
+| `int* const p = &value;` | Yes | The pointer itself. |
+| `const int* p = &value;` | No | The pointed-to integer. |
+| `const int* const p = &value;` | Yes, plus low-level const | Both pointer and pointed-to integer. |
+
+For the pointer rows, assume `int value = 10;` already exists; each row is a separate example.
+
+“Top-level” describes where the qualifier sits in the type, not whether `const` appears first or last in the text.
+
+## Why const on a by-value parameter does not create an overload
+
+Passing an integer by value initializes a separate parameter object. Making that parameter const prevents the function from assigning to its local copy.
+
+This complete program demonstrates the distinction:
+
+```cpp
+#include <iostream>
+
+void process(int count); // Declaration visible to callers.
+
+void process(const int count) // Definition of the SAME function.
+{
+    // ++count; // Error if uncommented: local parameter is const.
+    std::cout << count << '\n';
+}
+
+int main()
+{
+    int original = 10;
+    process(original);
+    ++original; // OK: the caller's integer is still mutable.
+    std::cout << original << '\n';
+}
+```
+
+It prints `10`, followed by `11`.
+
+Even without the parameter's `const`, changing the local integer would not change `original`: they are separate objects.
+
+When forming a function's type, C++ removes top-level cv-qualifiers from parameter types. It retains them for the parameter objects inside the definition. Therefore, these are two declarations of one function:
+
+```cpp
+void process(int count);
+void process(const int count);
+```
+
+Providing a body for each would be a redefinition error, not two overloads. The caller supplies an integer value either way; whether the function changes its own copy is an implementation choice.
+
+The same distinction applies when copying a pointer:
+
+```cpp
+void update(int* p);
+void update(int* const p); // Same function: top-level const removed.
+
+void inspect(int* p);
+void inspect(const int* p); // Distinct overload: pointee const retained.
+```
+
+In an `update(int* const p)` definition, `p` cannot be reassigned, but `*p` can modify the caller's integer when it points to a valid non-const integer. Passing a pointer by value copies the address, not the pointed-to object.
+
+Similarly, `inspect(Sensor&)` and `inspect(const Sensor&)` can be distinct overloads: const qualifies the referred-to Sensor. And trailing const on a member function remains significant—`read()` and `read() const` can be separate overloads.
 
 The practical question is:
 
@@ -316,6 +425,8 @@ When a call fails because of constness, trace the receiving object of that call.
 
 ## References and verification
 
+- [C++ working draft: function declarations](https://eel.is/c++draft/dcl.fct) — removal of top-level parameter cv-qualifiers when forming function types.
+
 - [C++ working draft: cv-qualifiers](https://eel.is/c++draft/dcl.type.cv) — const access and attempts to modify const objects.
 - [C++ working draft: this](https://eel.is/c++draft/expr.prim.this) — the type of the receiving-object pointer.
 - [C++ working draft: closure types](https://eel.is/c++draft/expr.prim.lambda.closure) — lambda call operators.
@@ -325,3 +436,5 @@ When a call fails because of constness, trace the receiving object of that call.
 The linked working draft evolves; this article targets C++17. Newer lambda features are outside its scope.
 
 Verification: GCC 13.3.0 with `-std=c++17 -Wall -Wextra -pedantic`. The four runnable complete examples produced the outputs shown. The captured-callback example failed at invocation as intended. Both invocability assertions in the corrected wrapper passed.
+
+The added by-value parameter example was also compiled with the same flags and printed `10` followed by `11`, confirming that the declaration and definition name the same function.

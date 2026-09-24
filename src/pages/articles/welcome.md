@@ -7,7 +7,7 @@ category: From the editor
 readingTime: 2 min read
 ---
 
-Welcome to Sebastian Dev Blog: a notebook about C++, embedded software, and the reasoning behind good design.
+Welcome to Sebastian Mathai’s blog: a notebook about C++, embedded software, and the reasoning behind good design.
 
 Learning a language means more than recognizing its syntax. It means being able to explain what an object owns, how long it lives, which operations are valid, and what assumptions a design depends on.
 

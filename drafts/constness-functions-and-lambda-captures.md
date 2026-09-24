@@ -380,7 +380,36 @@ int main()
 
 It prints `1`.
 
-The closure is const, but the referenced integer is a separate, non-const object. This is the same distinction we saw with a const pointer object and a mutable pointee.
+There are two distinct objects here:
+
+- `callback` is the closure object created by the lambda expression. It is const because we wrote `const auto callback`.
+- `calls` is the original integer in `main()`. It was declared as `int`, so it remains non-const.
+
+The capture `[&calls]` lets the lambda use that original integer by reference. It does not put an independent integer copy inside the closure. Therefore, `++calls` changes the integer in `main()`, rather than a value stored inside the const closure.
+
+The lambda's default `operator() const` can be invoked on the const `callback` object. Const access to that closure does not add constness to the separate object reached through the reference.
+
+Compare the three cases:
+
+| Capture | Which integer does the body access? | Can the body increment it? |
+|---|---|---|
+| `[calls]` | A copy stored inside the closure. | No: the default call operator accesses that copy as const. |
+| `[calls]() mutable` | A copy stored inside the closure. | Yes, when called on a non-const closure. |
+| `[&calls]` | The original integer in `main()`. | Yes, because the original integer is non-const. |
+
+A const pointer provides a useful analogy:
+
+```cpp
+int calls = 0;
+int* const pointer = &calls;
+
+++*pointer; // OK: modify the separate integer.
+// pointer = nullptr; // Error: modify the const pointer itself.
+```
+
+The pointer is const; the integer it points to is not. Likewise, making a closure const does not make an object captured by reference const. This is an analogy about access, not a claim that the compiler must implement reference captures as pointer members.
+
+If the original declaration were `const int calls = 0;`, then `[&calls]` would refer to a const integer, and `++calls` would fail. Adding lambda `mutable` would not fix that: it changes the closure's call operator, not the original integer's type.
 
 Reference capture introduces a lifetime requirement: the referenced object must remain alive whenever the callback uses it. A stored subscription that outlives a local captured by reference would violate that requirement.
 

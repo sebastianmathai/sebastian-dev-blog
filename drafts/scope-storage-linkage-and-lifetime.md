@@ -136,7 +136,61 @@ inline static int deviceCount = 0;
 | Block-scope `static` | Gives the variable static storage duration while retaining its local scope. |
 | Static data member | Declares a separate object associated with the class, rather than one subobject in every instance. |
 
-The member example uses C++17 `inline` so its in-class declaration is also a definition suitable for a header.
+The member example uses C++17 `inline` so its in-class declaration is also a definition suitable for a header. To see why that matters, compare these two ways of declaring the same kind of shared counter.
+
+**Without inline: declare in the header, define in one source file.**
+
+```cpp
+// Sensor.hpp — inside an include guard
+class Sensor
+{
+public:
+    static int deviceCount; // Declaration, not a definition.
+};
+```
+
+The declaration tells the compiler that `Sensor::deviceCount` exists and has type `int`. For this non-inline static data member, the class definition does not also supply the variable's definition.
+
+If the program reads or modifies this counter, supply its definition in exactly one source file:
+
+```cpp
+// Sensor.cpp
+#include "Sensor.hpp"
+
+int Sensor::deviceCount = 0; // Definition and initializer.
+```
+
+Notice that we do not repeat `static` on this out-of-class definition. The declaration inside `Sensor` already established that it is a static member.
+
+Omitting the required definition typically produces an “undefined reference” or “unresolved external symbol” linker error. Putting this ordinary definition in a header included by multiple source files instead violates the one-definition rule and typically produces a multiple-definition linker error.
+
+**With C++17 inline: define directly in the header.**
+
+```cpp
+// Sensor.hpp — inside an include guard
+class Sensor
+{
+public:
+    inline static int deviceCount = 0; // Declaration AND definition.
+};
+```
+
+No separate `Sensor.cpp` definition is needed.
+
+For this ordinary externally linked class, multiple translation units may contain the matching inline-variable definition from the header. They refer to **one shared counter with one address**, not a different counter per source file. The definitions must satisfy the one-definition rule, including its matching-definition requirements.
+
+The two keywords have separate jobs:
+
+| Keyword | What it contributes here |
+|---|---|
+| `static` | The counter is associated with the class and is not a subobject in each Sensor instance. |
+| `inline` | The variable can be defined in the header and have matching definitions across translation units. |
+
+For a variable, `inline` does not mean “substitute this at the call site” or promise faster access. It controls how definitions may be supplied.
+
+Also distinguish this from a namespace-scope `static int deviceCount = 0;` in a header: that creates a separate internally linked counter per translation unit. Class-member `static` does not have that same meaning.
+
+Finally, `inline static` does not make the counter thread-safe. Concurrent updates still need appropriate synchronization.
 
 The same spelling answers different questions depending on where it appears. Always read the enclosing context before interpreting `static`.
 

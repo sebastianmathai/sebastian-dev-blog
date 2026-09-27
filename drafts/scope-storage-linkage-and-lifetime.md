@@ -3,7 +3,7 @@
 Status: draft  
 Series: C++ Mental Models — Part 4  
 Standard: C++17  
-Estimated reading time: 12 minutes
+Estimated reading time: 18 minutes
 
 Does a local `const` variable live in read-only memory? Does `static` mean a variable is global? If a constant is defined in a header, does every source file share the same object?
 
@@ -215,6 +215,144 @@ The const rows assume no earlier declaration establishes different linkage. Name
 
 Multiple definitions of an inline variable must satisfy the one-definition rule, including matching definitions. `inline` is not permission to give the same variable different values in different files.
 
+## What inline really means
+
+There are two ideas to separate: **the language's rules for definitions** and **the optimizer's treatment of a function call**.
+
+For an externally linked function or variable in this C++17 discussion, `inline` permits matching definitions in multiple translation units while retaining one entity. This is why a header can contain an inline definition.
+
+### Inline functions and call substitution
+
+Consider this header fragment:
+
+```cpp
+inline int addOne(int value)
+{
+    return value + 1;
+}
+```
+
+At a call such as `int result = addOne(input);`, the compiler can generate a function call, or it can incorporate the operation directly into the caller. That second choice is called *inlining* or *inline substitution*. It is an optimization of generated code, not textual macro replacement.
+
+The keyword does not force that optimization. A compiler may inline a function without the keyword, or leave calls to an `inline` function intact. Optimization settings, body availability, and compiler heuristics influence the decision.
+
+A function can even have some calls inlined and others left as calls. Taking its address can require a callable out-of-line implementation, depending on how that address is used.
+
+For this header, the essential source-code contract is that matching definitions may appear in different translation units. The compiler must preserve that contract whether or not it eliminates any calls.
+
+### What happens during a typical build?
+
+Suppose two source files include the same header containing:
+
+```cpp
+inline int packetCount = 0;
+```
+
+Each source file is compiled separately and sees the definition. Typical toolchains emit suitable symbols and sections so the linker can coalesce duplicate definitions when necessary, using mechanisms such as COMDAT or weak symbols.
+
+Those mechanisms are implementation details. The observable requirement is one shared variable with one address, assuming external linkage and a valid program. Incrementing it through code compiled from one source file changes the same object seen by code from the other.
+
+A variable cannot have its “function body substituted,” so inline variables make the definition-related meaning especially clear.
+
+Do not rely on the linker to check that definitions agree. Different initializers or function bodies across translation units can violate the one-definition rule without producing a diagnostic. Matching source tokens are required, and matching name lookup matters too, subject to the rule's specified exceptions.
+
+### The same rule reaches function-local statics
+
+This is another header fragment:
+
+```cpp
+inline int& packetCounter()
+{
+    static int value = 0;
+    return value;
+}
+```
+
+With the external linkage shown here, the inline function is one entity across translation units, and its local static is one shared object too. Inlining its calls does not create a fresh counter at every call site.
+
+But `static inline int& packetCounter()` at namespace scope gives the function internal linkage. Each translation unit that includes that definition then has its own function and its own local static. `inline` does not override internal linkage.
+
+In C++17, a function defined inside a class definition is implicitly inline, as is a constexpr function. A static constexpr data member is also implicitly inline. An ordinary namespace-scope constexpr variable is **not** implicitly inline.
+
+The useful distinction is: **inline definitions concern entity identity; inline substitution concerns generated instructions.**
+
+## Anonymous namespaces and file-local static variables
+
+An anonymous namespace, also called an unnamed namespace, groups implementation details belonging to one translation unit.
+
+For example, this is a complete program that could live in `receiver.cpp`:
+
+```cpp
+#include <iostream>
+
+namespace
+{
+    int packetCount = 0;
+
+    struct PacketSummary
+    {
+        int bytes;
+    };
+
+    bool isValid(const PacketSummary& packet)
+    {
+        return packet.bytes > 0;
+    }
+}
+
+void recordPacket(int bytes)
+{
+    if (isValid(PacketSummary{bytes}))
+    {
+        ++packetCount;
+    }
+}
+
+int main()
+{
+    recordPacket(1440);
+    recordPacket(0);
+    std::cout << packetCount << '\n';
+}
+```
+
+It prints `1`.
+
+Here, `packetCount`, `PacketSummary`, and `isValid` belong to the unnamed namespace. Its internal linkage keeps these names from identifying the same entities through declarations in other translation units. Code later in this translation unit can still use the names normally.
+
+The counter has static storage duration because it is a namespace-scope variable, even though its declaration does not spell `static`.
+
+Compare these alternative implementation fragments:
+
+```cpp
+// Alternative A: namespace-scope static
+static int packetCount = 0;
+static bool isValid(int bytes) { return bytes > 0; }
+
+// Alternative B: anonymous namespace
+namespace
+{
+    int packetCount = 0;
+    bool isValid(int bytes) { return bytes > 0; }
+}
+```
+
+Use one alternative, not both with these names in the same scope. For the counter and helper function, both approaches provide internal linkage. The anonymous namespace can also contain helper types and templates; namespace-scope `static` cannot be applied to a class declaration to achieve that.
+
+Prefer an anonymous namespace when grouping several private implementation details in a `.cpp` file. File-level `static` remains valid for an individual variable or function. Adding `static` to these declarations inside the anonymous namespace is redundant for internal linkage.
+
+“Private to a file” is shorthand for **private to a translation unit**, not a security boundary. A public function can still return a pointer to an internal object.
+
+### Be deliberate about anonymous namespaces in headers
+
+An unnamed namespace in a header introduces separate entities in each including translation unit, just like a file-level static variable in a header. Its helper types are distinct between translation units too.
+
+Use that only when per-translation-unit identity is intentional. For shared header constants, consider `inline constexpr`; for shared runtime state, consider one definition behind an API or explicit ownership.
+
+There is also an ODR trap: an externally linked inline function in a header must not casually refer to a mutable counter with internal linkage in that header. The matching function definitions would resolve that counter name to different objects. Linker success does not make this valid.
+
+A named namespace such as `detail` does not by itself provide internal linkage. It organizes names; it does not create the translation-unit boundary of an anonymous namespace.
+
 ## A three-file experiment: same value, different identity
 
 These files form one complete program.
@@ -411,6 +549,11 @@ These questions prevent a local name from being mistaken for a short-lived objec
 
 ## References and verification
 
+- [Unnamed namespaces](https://eel.is/c++draft/namespace.unnamed)
+- [One-definition rule](https://eel.is/c++draft/basic.def.odr)
+- [GCC: inline functions](https://gcc.gnu.org/onlinedocs/gcc/Inline.html) — optimization behavior; distinguish the C++ discussion from the GNU C-specific sections.
+- [GCC: vague linkage](https://gcc.gnu.org/onlinedocs/gcc/Vague-Linkage.html) — typical emitted definitions and linker handling.
+
 - [C++ working draft: scope](https://eel.is/c++draft/basic.scope.scope)
 - [Storage duration](https://eel.is/c++draft/basic.stc)
 - [Linkage](https://eel.is/c++draft/basic.link)
@@ -423,3 +566,5 @@ These questions prevent a local name from being mistaken for a short-lived objec
 These working-draft links evolve; the examples target C++17.
 
 Verification: GCC 13.3.0 with `-std=c++17 -Wall -Wextra -pedantic`. The counter printed `1 2`; the three-file program printed `false` and `true`; the lifetime example printed `Destroy 10` and `Destroy 20`. Fragments are labeled or introduced as such and are not standalone programs.
+
+The anonymous-namespace program was compiled with the same C++17 warning flags and printed `1` as expected. The build-mechanism discussion describes typical implementations, not a mandated object-file format.

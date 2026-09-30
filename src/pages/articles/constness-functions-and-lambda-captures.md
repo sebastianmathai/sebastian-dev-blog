@@ -457,7 +457,7 @@ The value capture maintains its own counter. The reference capture changes the o
 
 When a call fails because of constness, trace the receiving object of that call. In a lambda, that may be a captured object inside another object.
 
-## References and verification
+## References
 
 - [C++ working draft: function declarations](https://eel.is/c++draft/dcl.fct) — removal of top-level parameter cv-qualifiers when forming function types.
 
@@ -466,9 +466,3 @@ When a call fails because of constness, trace the receiving object of that call.
 - [C++ working draft: closure types](https://eel.is/c++draft/expr.prim.lambda.closure) — lambda call operators.
 - [C++ working draft: lambda captures](https://eel.is/c++draft/expr.prim.lambda.capture) — captured state and reference captures.
 - [C++ working draft: unique_ptr observers](https://eel.is/c++draft/unique.ptr.single.observers) — access to the owned object through a const smart pointer.
-
-The linked working draft evolves; this article targets C++17. Newer lambda features are outside its scope.
-
-Verification: GCC 13.3.0 with `-std=c++17 -Wall -Wextra -pedantic`. The four runnable complete examples produced the outputs shown. The captured-callback example failed at invocation as intended. Both invocability assertions in the corrected wrapper passed.
-
-The added by-value parameter example was also compiled with the same flags and printed `10` followed by `11`, confirming that the declaration and definition name the same function.

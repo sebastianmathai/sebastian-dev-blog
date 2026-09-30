@@ -552,7 +552,7 @@ Before choosing a keyword, answer:
 
 These questions prevent a local name from being mistaken for a short-lived object, a constant value from being mistaken for a storage location, and repeated header definitions from being mistaken for shared identity.
 
-## References and verification
+## References
 
 - [Unnamed namespaces](https://eel.is/c++draft/namespace.unnamed)
 - [One-definition rule](https://eel.is/c++draft/basic.def.odr)
@@ -567,9 +567,3 @@ These questions prevent a local name from being mistaken for a short-lived objec
 - [Constexpr declarations](https://eel.is/c++draft/dcl.constexpr)
 - [Inline declarations](https://eel.is/c++draft/dcl.inline)
 - [Static data members](https://eel.is/c++draft/class.static.data)
-
-These working-draft links evolve; the examples target C++17.
-
-Verification: GCC 13.3.0 with `-std=c++17 -Wall -Wextra -pedantic`. The counter printed `1 2`; the three-file program printed `false` and `true`; the lifetime example printed `Destroy 10` and `Destroy 20`. Fragments are labeled or introduced as such and are not standalone programs.
-
-The anonymous-namespace program was compiled with the same C++17 warning flags and printed `1` as expected. The build-mechanism discussion describes typical implementations, not a mandated object-file format.

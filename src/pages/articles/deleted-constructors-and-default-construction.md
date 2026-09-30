@@ -294,11 +294,9 @@ The useful question is not simply “Did I implement the Rule of Five?” It is:
 
 > Which operations does this type support, and can every subobject participate in them?
 
-## References and verification
+## References
 
 - [C++ working draft: default constructors](https://eel.is/c++draft/class.default.ctor) — implicit declaration and conditions that make a defaulted constructor deleted.
 - [C++ working draft: copy/move constructors](https://eel.is/c++draft/class.copy.ctor) — move suppression and fallback to copying.
 - [C++ Core Guidelines C.20](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rc-zero) — the Rule of Zero.
 - [C++ Core Guidelines C.21](https://isocpp.github.io/CppCoreGuidelines/CppCoreGuidelines#Rc-five) — considering copy, move, and destruction together.
-
-The linked working draft evolves; the examples here target C++17. Complete examples were checked with GCC 13.3.0 using `-std=c++17 -Wall -Wextra -pedantic`. The two intentionally failing programs were checked for the expected constructor diagnostics. The corrected program's five type-trait assertions passed, and it printed `LiDAR started`. The assignment-only exercise compiled; replacing its declaration with the deleted copy constructor failed as expected.

@@ -270,7 +270,77 @@ The name `incoming` is an lvalue expression, so the first initialization copies.
 
 This is useful: receiving an rvalue reference does not silently consume the argument every time you mention it.
 
-In a deduced template parameter such as `template<class T> void relay(T&& value)`, `T&&` can instead be a forwarding reference. Use `std::forward<T>(value)` when the wrapper should preserve the caller's value category. Unconditional `std::move(value)` would also permit consuming arguments supplied as lvalues.
+## Preserving lvalues and rvalues with std::forward
+
+A wrapper sometimes needs to pass an argument to another function while preserving whether the caller supplied an lvalue or an rvalue. This is where `std::forward` is useful.
+
+In the template below, `T&&` is a **forwarding reference**: `T` is deduced from the argument, and the parameter has the form `T&&` without an added `const`. Unlike a concrete parameter such as `Frame&&`, it can bind to both lvalues and rvalues.
+
+This complete example uses a minimal Frame type and three overloads so we can see which overload is selected:
+
+```cpp
+#include <iostream>
+#include <utility>
+
+struct Frame {};
+
+void handle(Frame&) { std::cout << "mutable lvalue\n"; }
+void handle(const Frame&) { std::cout << "const lvalue\n"; }
+void handle(Frame&&) { std::cout << "rvalue\n"; }
+
+template<class T>
+void relay(T&& value)
+{
+    handle(std::forward<T>(value));
+}
+
+int main()
+{
+    Frame frame;
+    const Frame fixed;
+
+    relay(frame);
+    relay(fixed);
+    relay(Frame{});
+    relay(std::move(frame));
+}
+```
+
+Output:
+
+```text
+mutable lvalue
+const lvalue
+rvalue
+rvalue
+```
+
+Inside `relay`, the name `value` is always an lvalue expression—even when its declared type is an rvalue reference. The deduced type `T` retains the information needed to forward it appropriately.
+
+| Call | Deduced T | Parameter type after reference collapsing | Expression passed to handle |
+| --- | --- | --- | --- |
+| `relay(frame)` | `Frame&` | `Frame&` | Mutable lvalue |
+| `relay(fixed)` | `const Frame&` | `const Frame&` | Const lvalue |
+| `relay(Frame{})` | `Frame` | `Frame&&` | Rvalue (xvalue) |
+| `relay(std::move(frame))` | `Frame` | `Frame&&` | Rvalue (xvalue) |
+
+**Reference collapsing** explains the first two rows. When template substitution combines references, an lvalue reference wins: `Frame& &&` collapses to `Frame&`. Only a combination of two rvalue references collapses to an rvalue reference.
+
+For these calls, `std::forward<T>(value)` acts like `static_cast<T&&>(value)`. When `T` is `Frame&`, that cast produces an lvalue. When `T` is `Frame`, it produces an xvalue that can bind to `Frame&&`. Constness is preserved too. A temporary originally supplied as a prvalue is forwarded as an xvalue; the important behavior here is preserving the lvalue/rvalue distinction.
+
+Compare three possible implementations of the wrapper:
+
+```cpp
+handle(value);                  // Named expression: always an lvalue.
+handle(std::move(value));       // Always an xvalue; retains constness.
+handle(std::forward<T>(value)); // Lvalue or xvalue according to deduced T.
+```
+
+With plain `value`, even `relay(Frame{})` selects the mutable-lvalue overload. With `std::move(value)`, even `relay(frame)` selects the rvalue overload: a downstream function could consume the caller's object even though the caller supplied an lvalue. With `std::forward<T>(value)`, the wrapper preserves that choice.
+
+The example's overloads only bind references and print messages; no Frame is copied or moved. Like `std::move`, `std::forward` is a cast helper. Any resource transfer happens in the operation that receives its result.
+
+Use `std::move` when you intentionally permit consuming a particular object. Use `std::forward<T>` when forwarding a deduced forwarding-reference parameter. A parameter of type `const T&&`, or `T&&` where `T` is already fixed by an enclosing class template, is not a forwarding reference in this sense.
 
 ## Why noexcept affects container behavior
 
@@ -340,7 +410,7 @@ The second line copies: the name `reference` is an lvalue expression. To permit 
 - A moved-from object remains alive; use it according to its type's contract.
 - Prefer resource-owning members and generated operations when they preserve your invariants.
 
-## References and verification
+## References
 
 - [C++17 working draft: move and forwarding helpers](https://timsong-cpp.github.io/cppwp/n4659/forward)
 - [Copy and move constructors](https://eel.is/c++draft/class.copy.ctor)
@@ -350,6 +420,3 @@ The second line copies: the name `reference` is an lvalue expression. To permit 
 - [Vector capacity and exception guarantees](https://eel.is/c++draft/vector.capacity)
 - [C++17 working draft: copy/move elision](https://timsong-cpp.github.io/cppwp/n4659/class.copy.elision)
 
-Working-draft links may evolve; examples here target C++17.
-
-Verification: the two complete programs were compiled with GCC 13.3.0 using `-std=c++17 -Wall -Wextra -pedantic` and produced the outputs shown. The unique_ptr program's ownership assertions passed. Other snippets illustrate individual declarations or operations and require the surrounding definitions described in the text.
